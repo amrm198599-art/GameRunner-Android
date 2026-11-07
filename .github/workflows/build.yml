@@ -1,0 +1,38 @@
+name: Build APK from ZIP
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: فك الضغط
+        run: |
+          ZIP=$(ls *.zip | head -n1)
+          echo "Using: $ZIP"
+          mkdir -p project
+          unzip -q "$ZIP" -d project
+          ROOT=$(dirname "$(find project -name settings.gradle.kts | head -n1)")
+          echo "ROOT=$ROOT" >> $GITHUB_ENV
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: بناء APK
+        working-directory: ${{ env.ROOT }}
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GameRunner-APK
+          path: ${{ env.ROOT }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
